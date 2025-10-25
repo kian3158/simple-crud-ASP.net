@@ -169,3 +169,4 @@ C:\Users\am.shahrami\Desktop\dev\test\crudapi\obj\Debug\net9.0\crudapi.genruntim
 C:\Users\am.shahrami\Desktop\dev\test\crudapi\obj\Debug\net9.0\ref\crudapi.dll
 C:\Users\am.shahrami\Desktop\dev\test\crudapi\bin\Debug\net9.0\MySqlConnector.dll
 C:\Users\am.shahrami\Desktop\dev\test\crudapi\bin\Debug\net9.0\Pomelo.EntityFrameworkCore.MySql.dll
+C:\Users\am.shahrami\Desktop\dev\test\crudapi\obj\Debug\net9.0\crudapi.sourcelink.json
