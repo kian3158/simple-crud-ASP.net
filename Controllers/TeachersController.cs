@@ -17,9 +17,9 @@ namespace SchoolApi.Controllers
             _context = context;
         }
 
-        // GET: api/teachers
+        // GET: api/Teachers
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<TeacherDto>>> GetAllTeachers()
+        public async Task<ActionResult<IEnumerable<TeacherDto>>> GetTeachers()
         {
             var teachers = await _context.Teachers
                 .Include(t => t.Courses)
@@ -28,49 +28,36 @@ namespace SchoolApi.Controllers
                     Id = t.Id,
                     Name = t.Name,
                     Email = t.Email,
-                    PhoneNumber = t.PhoneNumber,
-                    Courses = t.Courses.Select(c => new CourseDto
-                    {
-                        CourseId = c.CourseId,
-                        CourseName = c.CourseName,
-                        TeacherId = c.TeacherId
-                    }).ToList()
-                }).ToListAsync();
+                    PhoneNumber = t.PhoneNumber
+                })
+                .ToListAsync();
 
             return Ok(teachers);
         }
 
-        // GET: api/teachers/{id}
+        // GET: api/Teachers/5
         [HttpGet("{id}")]
         public async Task<ActionResult<TeacherDto>> GetTeacher(int id)
         {
             var teacher = await _context.Teachers
                 .Include(t => t.Courses)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
-            if (teacher == null)
-                return NotFound();
-
-            var teacherDto = new TeacherDto
-            {
-                Id = teacher.Id,
-                Name = teacher.Name,
-                Email = teacher.Email,
-                PhoneNumber = teacher.PhoneNumber,
-                Courses = teacher.Courses.Select(c => new CourseDto
+                .Where(t => t.Id == id)
+                .Select(t => new TeacherDto
                 {
-                    CourseId = c.CourseId,
-                    CourseName = c.CourseName,
-                    TeacherId = c.TeacherId
-                }).ToList()
-            };
+                    Id = t.Id,
+                    Name = t.Name,
+                    Email = t.Email,
+                    PhoneNumber = t.PhoneNumber
+                })
+                .FirstOrDefaultAsync();
 
-            return Ok(teacherDto);
+            if (teacher == null) return NotFound();
+            return Ok(teacher);
         }
 
-        // POST: api/teachers
+        // POST: api/Teachers
         [HttpPost]
-        public async Task<ActionResult<TeacherDto>> CreateTeacher(TeacherDto teacherDto)
+        public async Task<ActionResult<TeacherDto>> PostTeacher(TeacherDto teacherDto)
         {
             var teacher = new Teacher
             {
@@ -84,6 +71,33 @@ namespace SchoolApi.Controllers
 
             teacherDto.Id = teacher.Id;
             return CreatedAtAction(nameof(GetTeacher), new { id = teacher.Id }, teacherDto);
+        }
+
+        // PUT: api/Teachers/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutTeacher(int id, TeacherDto teacherDto)
+        {
+            var teacher = await _context.Teachers.FindAsync(id);
+            if (teacher == null) return NotFound();
+
+            teacher.Name = teacherDto.Name;
+            teacher.Email = teacherDto.Email;
+            teacher.PhoneNumber = teacherDto.PhoneNumber;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // DELETE: api/Teachers/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteTeacher(int id)
+        {
+            var teacher = await _context.Teachers.FindAsync(id);
+            if (teacher == null) return NotFound();
+
+            _context.Teachers.Remove(teacher);
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
     }
 }
