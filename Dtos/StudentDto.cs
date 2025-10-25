@@ -7,6 +7,6 @@ namespace SchoolApi.Dtos
         public string Email { get; set; } = string.Empty;
         public DateTime DateOfBirth { get; set; }
         public string PhoneNumber { get; set; } = string.Empty;
-        public List<CourseDto>? Courses { get; set; }   // Add this
+        public List<CourseDto>? Courses { get; set; }   
     }
 }
