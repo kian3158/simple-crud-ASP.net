@@ -27,7 +27,15 @@ namespace SchoolApi.Controllers
                 {
                     CourseId = c.CourseId,
                     CourseName = c.CourseName,
-                    TeacherId = c.TeacherId
+                    TeacherId = c.TeacherId,
+                    Students = c.Students.Select(s => new StudentDto
+                    {
+                        Id = s.Id,
+                        Name = s.Name,
+                        Email = s.Email,
+                        PhoneNumber = s.PhoneNumber,
+                        DateOfBirth = s.DateOfBirth
+                    }).ToList()
                 })
                 .ToListAsync();
 
@@ -45,7 +53,15 @@ namespace SchoolApi.Controllers
                 {
                     CourseId = c.CourseId,
                     CourseName = c.CourseName,
-                    TeacherId = c.TeacherId
+                    TeacherId = c.TeacherId,
+                    Students = c.Students.Select(s => new StudentDto
+                    {
+                        Id = s.Id,
+                        Name = s.Name,
+                        Email = s.Email,
+                        PhoneNumber = s.PhoneNumber,
+                        DateOfBirth = s.DateOfBirth
+                    }).ToList()
                 })
                 .FirstOrDefaultAsync();
 

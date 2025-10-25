@@ -28,7 +28,13 @@ namespace SchoolApi.Controllers
                     Id = t.Id,
                     Name = t.Name,
                     Email = t.Email,
-                    PhoneNumber = t.PhoneNumber
+                    PhoneNumber = t.PhoneNumber,
+                    Courses = t.Courses.Select(c => new CourseDto
+                    {
+                        CourseId = c.CourseId,
+                        CourseName = c.CourseName,
+                        TeacherId = c.TeacherId
+                    }).ToList()
                 })
                 .ToListAsync();
 
@@ -47,7 +53,13 @@ namespace SchoolApi.Controllers
                     Id = t.Id,
                     Name = t.Name,
                     Email = t.Email,
-                    PhoneNumber = t.PhoneNumber
+                    PhoneNumber = t.PhoneNumber,
+                    Courses = t.Courses.Select(c => new CourseDto
+                    {
+                        CourseId = c.CourseId,
+                        CourseName = c.CourseName,
+                        TeacherId = c.TeacherId
+                    }).ToList()
                 })
                 .FirstOrDefaultAsync();
 

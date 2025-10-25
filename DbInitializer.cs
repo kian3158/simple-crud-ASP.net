@@ -8,13 +8,12 @@ namespace SchoolApi.Data
     {
         public static void Initialize(SchoolContext context)
         {
-            // Ensure database is created
+            
             context.Database.EnsureCreated();
-
-            // Look for any teachers
+            
             if (context.Teachers.Any())
             {
-                return; // DB has been seeded
+                return; 
             }
 
             // Seed Teachers
