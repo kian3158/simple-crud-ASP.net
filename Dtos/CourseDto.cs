@@ -4,6 +4,7 @@ namespace SchoolApi.Dtos
     {
         public int CourseId { get; set; }
         public string CourseName { get; set; } = null!;
+        public int TeacherId { get; set; }  
         public List<StudentDto>? Students { get; set; }
     }
 }
