@@ -1,0 +1,41 @@
+# Visual Studio / .NET Core
+.vs/
+bin/
+obj/
+Debug/
+Release/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Auto-generated files
+*.dbmdl
+*.pdb
+*.cache
+*.log
+*.ide
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# ASP.NET Core
+wwwroot/lib/
+
+# Node/npm (if using frontend packages)
+node_modules/
+
+# Secrets
+appsettings.*.json
+secrets.json
+.env
+
+# VS Code
+.vscode/
+
+# SQL Server LocalDB
+*.mdf
+*.ldf
