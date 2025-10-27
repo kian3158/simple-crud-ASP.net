@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApi.Data;
 using SchoolApi.Dtos;
-using SchoolApi.Models;
+using SchoolApi.Services.Interfaces;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SchoolApi.Controllers
 {
@@ -10,30 +10,18 @@ namespace SchoolApi.Controllers
     [ApiController]
     public class StudentsController : ControllerBase
     {
-        private readonly SchoolContext _context;
+        private readonly IStudentService _studentService;
 
-        public StudentsController(SchoolContext context)
+        public StudentsController(IStudentService studentService)
         {
-            _context = context;
+            _studentService = studentService;
         }
 
         // GET: api/Students
         [HttpGet]
         public async Task<ActionResult<IEnumerable<StudentDto>>> GetStudents()
         {
-            var students = await _context.Students
-                .Include(s => s.StudentCourses)
-                    .ThenInclude(sc => sc.Course)
-                .Select(s => new StudentDto
-                {
-                    Id = s.Id,
-                    Name = s.Name,
-                    Email = s.Email,
-                    PhoneNumber = s.PhoneNumber,
-                    DateOfBirth = s.DateOfBirth
-                })
-                .ToListAsync();
-
+            var students = await _studentService.GetAllAsync();
             return Ok(students);
         }
 
@@ -41,56 +29,25 @@ namespace SchoolApi.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<StudentDto>> GetStudent(int id)
         {
-            var student = await _context.Students
-                .Include(s => s.StudentCourses)
-                    .ThenInclude(sc => sc.Course)
-                .Where(s => s.Id == id)
-                .Select(s => new StudentDto
-                {
-                    Id = s.Id,
-                    Name = s.Name,
-                    Email = s.Email,
-                    PhoneNumber = s.PhoneNumber,
-                    DateOfBirth = s.DateOfBirth
-                })
-                .FirstOrDefaultAsync();
-
+            var student = await _studentService.GetByIdAsync(id);
             if (student == null) return NotFound();
             return Ok(student);
         }
 
         // POST: api/Students
         [HttpPost]
-        public async Task<ActionResult<StudentDto>> PostStudent(StudentDto studentDto)
+        public async Task<ActionResult<StudentDto>> PostStudent([FromBody] StudentDto studentDto)
         {
-            var student = new Student
-            {
-                Name = studentDto.Name,
-                Email = studentDto.Email,
-                PhoneNumber = studentDto.PhoneNumber,
-                DateOfBirth = studentDto.DateOfBirth
-            };
-
-            _context.Students.Add(student);
-            await _context.SaveChangesAsync();
-
-            studentDto.Id = student.Id;
-            return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, studentDto);
+            var created = await _studentService.CreateAsync(studentDto);
+            return CreatedAtAction(nameof(GetStudent), new { id = created.Id }, created);
         }
 
         // PUT: api/Students/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutStudent(int id, StudentDto studentDto)
+        public async Task<IActionResult> PutStudent(int id, [FromBody] StudentDto studentDto)
         {
-            var student = await _context.Students.FindAsync(id);
-            if (student == null) return NotFound();
-
-            student.Name = studentDto.Name;
-            student.Email = studentDto.Email;
-            student.PhoneNumber = studentDto.PhoneNumber;
-            student.DateOfBirth = studentDto.DateOfBirth;
-
-            await _context.SaveChangesAsync();
+            var updated = await _studentService.UpdateAsync(id, studentDto);
+            if (!updated) return NotFound();
             return NoContent();
         }
 
@@ -98,11 +55,8 @@ namespace SchoolApi.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStudent(int id)
         {
-            var student = await _context.Students.FindAsync(id);
-            if (student == null) return NotFound();
-
-            _context.Students.Remove(student);
-            await _context.SaveChangesAsync();
+            var deleted = await _studentService.DeleteAsync(id);
+            if (!deleted) return NotFound();
             return NoContent();
         }
     }

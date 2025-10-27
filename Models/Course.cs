@@ -9,7 +9,7 @@ namespace SchoolApi.Models
         public Teacher? Teacher { get; set; }
 
         public ICollection<StudentCourse>? StudentCourses { get; set; }
-        public ICollection<Student> Students { get; set; } = new List<Student>();
+
 
     }
 }

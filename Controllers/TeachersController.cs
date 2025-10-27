@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolApi.Data;
 using SchoolApi.Dtos;
-using SchoolApi.Models;
+using SchoolApi.Services.Interfaces;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SchoolApi.Controllers
 {
@@ -10,34 +10,18 @@ namespace SchoolApi.Controllers
     [ApiController]
     public class TeachersController : ControllerBase
     {
-        private readonly SchoolContext _context;
+        private readonly ITeacherService _teacherService;
 
-        public TeachersController(SchoolContext context)
+        public TeachersController(ITeacherService teacherService)
         {
-            _context = context;
+            _teacherService = teacherService;
         }
 
         // GET: api/Teachers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TeacherDto>>> GetTeachers()
         {
-            var teachers = await _context.Teachers
-                .Include(t => t.Courses)
-                .Select(t => new TeacherDto
-                {
-                    Id = t.Id,
-                    Name = t.Name,
-                    Email = t.Email,
-                    PhoneNumber = t.PhoneNumber,
-                    Courses = t.Courses.Select(c => new CourseDto
-                    {
-                        CourseId = c.CourseId,
-                        CourseName = c.CourseName,
-                        TeacherId = c.TeacherId
-                    }).ToList()
-                })
-                .ToListAsync();
-
+            var teachers = await _teacherService.GetAllAsync();
             return Ok(teachers);
         }
 
@@ -45,58 +29,25 @@ namespace SchoolApi.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<TeacherDto>> GetTeacher(int id)
         {
-            var teacher = await _context.Teachers
-                .Include(t => t.Courses)
-                .Where(t => t.Id == id)
-                .Select(t => new TeacherDto
-                {
-                    Id = t.Id,
-                    Name = t.Name,
-                    Email = t.Email,
-                    PhoneNumber = t.PhoneNumber,
-                    Courses = t.Courses.Select(c => new CourseDto
-                    {
-                        CourseId = c.CourseId,
-                        CourseName = c.CourseName,
-                        TeacherId = c.TeacherId
-                    }).ToList()
-                })
-                .FirstOrDefaultAsync();
-
+            var teacher = await _teacherService.GetByIdAsync(id);
             if (teacher == null) return NotFound();
             return Ok(teacher);
         }
 
         // POST: api/Teachers
         [HttpPost]
-        public async Task<ActionResult<TeacherDto>> PostTeacher(TeacherDto teacherDto)
+        public async Task<ActionResult<TeacherDto>> PostTeacher([FromBody] TeacherDto teacherDto)
         {
-            var teacher = new Teacher
-            {
-                Name = teacherDto.Name,
-                Email = teacherDto.Email,
-                PhoneNumber = teacherDto.PhoneNumber
-            };
-
-            _context.Teachers.Add(teacher);
-            await _context.SaveChangesAsync();
-
-            teacherDto.Id = teacher.Id;
-            return CreatedAtAction(nameof(GetTeacher), new { id = teacher.Id }, teacherDto);
+            var created = await _teacherService.CreateAsync(teacherDto);
+            return CreatedAtAction(nameof(GetTeacher), new { id = created.Id }, created);
         }
 
         // PUT: api/Teachers/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutTeacher(int id, TeacherDto teacherDto)
+        public async Task<IActionResult> PutTeacher(int id, [FromBody] TeacherDto teacherDto)
         {
-            var teacher = await _context.Teachers.FindAsync(id);
-            if (teacher == null) return NotFound();
-
-            teacher.Name = teacherDto.Name;
-            teacher.Email = teacherDto.Email;
-            teacher.PhoneNumber = teacherDto.PhoneNumber;
-
-            await _context.SaveChangesAsync();
+            var updated = await _teacherService.UpdateAsync(id, teacherDto);
+            if (!updated) return NotFound();
             return NoContent();
         }
 
@@ -104,11 +55,8 @@ namespace SchoolApi.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTeacher(int id)
         {
-            var teacher = await _context.Teachers.FindAsync(id);
-            if (teacher == null) return NotFound();
-
-            _context.Teachers.Remove(teacher);
-            await _context.SaveChangesAsync();
+            var deleted = await _teacherService.DeleteAsync(id);
+            if (!deleted) return NotFound();
             return NoContent();
         }
     }
