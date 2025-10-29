@@ -1,63 +1,78 @@
 using Microsoft.AspNetCore.Mvc;
 using SchoolApi.Dtos;
-using SchoolApi.Services.Interfaces;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using SchoolApi.Services;
 
 namespace SchoolApi.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class TeachersController : ControllerBase
     {
-        private readonly ITeacherService _teacherService;
-
-        public TeachersController(ITeacherService teacherService)
-        {
-            _teacherService = teacherService;
-        }
+        private readonly ITeacherService _svc;
+        public TeachersController(ITeacherService svc) => _svc = svc;
 
         // GET: api/Teachers
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<TeacherDto>>> GetTeachers()
+        public async Task<IActionResult> GetAll()
         {
-            var teachers = await _teacherService.GetAllAsync();
-            return Ok(teachers);
+            var list = await _svc.GetAllAsync();
+            return Ok(list);
         }
 
-        // GET: api/Teachers/5
+        // GET: api/Teachers/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<TeacherDto>> GetTeacher(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            var teacher = await _teacherService.GetByIdAsync(id);
-            if (teacher == null) return NotFound();
-            return Ok(teacher);
+            var t = await _svc.GetByIdAsync(id);
+            if (t == null) return NotFound();
+            return Ok(t);
+        }
+
+        // GET: api/Teachers/courses-by-email/{email}
+        [HttpGet("courses-by-email/{email}")]
+        public async Task<IActionResult> GetCoursesByEmail(string email)
+        {
+            var courses = await _svc.GetCoursesByTeacherEmailAsync(email);
+            return Ok(courses);
         }
 
         // POST: api/Teachers
         [HttpPost]
-        public async Task<ActionResult<TeacherDto>> PostTeacher([FromBody] TeacherDto teacherDto)
+        public async Task<IActionResult> Create([FromBody] TeacherDto dto)
         {
-            var created = await _teacherService.CreateAsync(teacherDto);
-            return CreatedAtAction(nameof(GetTeacher), new { id = created.Id }, created);
+            var id = await _svc.CreateAsync(dto);
+            dto.Id = id;
+            return CreatedAtAction(nameof(Get), new { id }, dto);
         }
 
-        // PUT: api/Teachers/5
+        // PUT: api/Teachers/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutTeacher(int id, [FromBody] TeacherDto teacherDto)
+        public async Task<IActionResult> Update(int id, [FromBody] TeacherDto dto)
         {
-            var updated = await _teacherService.UpdateAsync(id, teacherDto);
-            if (!updated) return NotFound();
-            return NoContent();
+            try
+            {
+                await _svc.UpdateAsync(id, dto);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
-        // DELETE: api/Teachers/5
+        // DELETE: api/Teachers/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTeacher(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _teacherService.DeleteAsync(id);
-            if (!deleted) return NotFound();
-            return NoContent();
+            try
+            {
+                await _svc.DeleteAsync(id);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
     }
 }

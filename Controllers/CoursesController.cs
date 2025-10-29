@@ -1,58 +1,70 @@
 using Microsoft.AspNetCore.Mvc;
 using SchoolApi.Dtos;
-using SchoolApi.Services.Interfaces;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using SchoolApi.Services;
 
 namespace SchoolApi.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class CoursesController : ControllerBase
     {
-        private readonly ICourseService _courseService;
+        private readonly ICourseService _svc;
+        public CoursesController(ICourseService svc) => _svc = svc;
 
-        public CoursesController(ICourseService courseService)
-        {
-            _courseService = courseService;
-        }
-
+        // GET: api/Courses
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CourseDto>>> GetCourses()
+        public async Task<IActionResult> GetAll()
         {
-            var courses = await _courseService.GetAllAsync();
-            return Ok(courses);
+            var list = await _svc.GetAllAsync();
+            return Ok(list);
         }
 
+        // GET: api/Courses/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<CourseDto>> GetCourse(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            var course = await _courseService.GetByIdAsync(id);
-            if (course == null) return NotFound();
-            return Ok(course);
+            var c = await _svc.GetByIdAsync(id);
+            if (c == null) return NotFound();
+            return Ok(c);
         }
 
+        // POST: api/Courses
         [HttpPost]
-        public async Task<ActionResult<CourseDto>> PostCourse([FromBody] CourseDto courseDto)
+        public async Task<IActionResult> Create([FromBody] CourseDto dto)
         {
-            var created = await _courseService.CreateAsync(courseDto);
-            return CreatedAtAction(nameof(GetCourse), new { id = created.CourseId }, created);
+            var id = await _svc.CreateAsync(dto);
+            dto.CourseId = id;
+            return CreatedAtAction(nameof(Get), new { id }, dto);
         }
 
+        // PUT: api/Courses/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCourse(int id, [FromBody] CourseDto courseDto)
+        public async Task<IActionResult> Update(int id, [FromBody] CourseDto dto)
         {
-            var updated = await _courseService.UpdateAsync(id, courseDto);
-            if (!updated) return NotFound();
-            return NoContent();
+            try
+            {
+                await _svc.UpdateAsync(id, dto);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
+        // DELETE: api/Courses/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCourse(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _courseService.DeleteAsync(id);
-            if (!deleted) return NotFound();
-            return NoContent();
+            try
+            {
+                await _svc.DeleteAsync(id);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
     }
 }

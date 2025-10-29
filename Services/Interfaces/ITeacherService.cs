@@ -1,15 +1,14 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using SchoolApi.Dtos;
 
-namespace SchoolApi.Services.Interfaces
+namespace SchoolApi.Services
 {
     public interface ITeacherService
     {
         Task<IEnumerable<TeacherDto>> GetAllAsync();
         Task<TeacherDto?> GetByIdAsync(int id);
-        Task<TeacherDto> CreateAsync(TeacherDto dto);
-        Task<bool> UpdateAsync(int id, TeacherDto dto);
-        Task<bool> DeleteAsync(int id);
+        Task<int> CreateAsync(TeacherDto dto);
+        Task UpdateAsync(int id, TeacherDto dto);
+        Task DeleteAsync(int id);
+        Task<IEnumerable<CourseDto>> GetCoursesByTeacherEmailAsync(string email);
     }
 }

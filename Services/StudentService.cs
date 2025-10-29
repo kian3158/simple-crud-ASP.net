@@ -2,96 +2,84 @@ using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
 using SchoolApi.Dtos;
 using SchoolApi.Models;
-using SchoolApi.Services.Interfaces;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace SchoolApi.Services
 {
     public class StudentService : IStudentService
     {
         private readonly SchoolContext _context;
-
-        public StudentService(SchoolContext context)
-        {
-            _context = context;
-        }
+        public StudentService(SchoolContext context) => _context = context;
 
         public async Task<IEnumerable<StudentDto>> GetAllAsync()
         {
             return await _context.Students
-                .Include(s => s.StudentCourses)
-                    .ThenInclude(sc => sc.Course)
-                .Select(s => new StudentDto
-                {
+                .Select(s => new StudentDto {
                     Id = s.Id,
                     Name = s.Name,
                     Email = s.Email,
                     PhoneNumber = s.PhoneNumber,
                     DateOfBirth = s.DateOfBirth
-                })
-                .ToListAsync();
+                }).ToListAsync();
         }
 
         public async Task<StudentDto?> GetByIdAsync(int id)
         {
-            var s = await _context.Students
-                .Include(st => st.StudentCourses)
-                    .ThenInclude(sc => sc.Course)
-                .FirstOrDefaultAsync(x => x.Id == id);
-
-            if (s == null) return null;
-
-            return new StudentDto
-            {
-                Id = s.Id,
-                Name = s.Name,
-                Email = s.Email,
-                PhoneNumber = s.PhoneNumber,
-                DateOfBirth = s.DateOfBirth
-            };
+            return await _context.Students
+                .Where(s => s.Id == id)
+                .Select(s => new StudentDto {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Email = s.Email,
+                    PhoneNumber = s.PhoneNumber,
+                    DateOfBirth = s.DateOfBirth
+                }).FirstOrDefaultAsync();
         }
 
-        public async Task<StudentDto> CreateAsync(StudentDto dto)
+        public async Task<int> CreateAsync(StudentDto dto)
         {
-            var student = new Student
-            {
+            var s = new Student {
                 Name = dto.Name,
                 Email = dto.Email,
                 PhoneNumber = dto.PhoneNumber,
                 DateOfBirth = dto.DateOfBirth
             };
-
-            _context.Students.Add(student);
+            _context.Students.Add(s);
             await _context.SaveChangesAsync();
-
-            dto.Id = student.Id;
-            return dto;
+            return s.Id;
         }
 
-        public async Task<bool> UpdateAsync(int id, StudentDto dto)
+        public async Task UpdateAsync(int id, StudentDto dto)
         {
-            var student = await _context.Students.FindAsync(id);
-            if (student == null) return false;
-
-            student.Name = dto.Name;
-            student.Email = dto.Email;
-            student.PhoneNumber = dto.PhoneNumber;
-            student.DateOfBirth = dto.DateOfBirth;
-
+            var s = await _context.Students.FindAsync(id);
+            if (s == null) throw new KeyNotFoundException("Student not found");
+            s.Name = dto.Name;
+            s.Email = dto.Email;
+            s.PhoneNumber = dto.PhoneNumber;
+            s.DateOfBirth = dto.DateOfBirth;
             await _context.SaveChangesAsync();
-            return true;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task DeleteAsync(int id)
         {
-            var student = await _context.Students.FindAsync(id);
-            if (student == null) return false;
-
-            _context.Students.Remove(student);
+            var s = await _context.Students.FindAsync(id);
+            if (s == null) throw new KeyNotFoundException("Student not found");
+            _context.Students.Remove(s);
             await _context.SaveChangesAsync();
-            return true;
+        }
+
+        public async Task<IEnumerable<CourseDto>> GetCoursesByStudentEmailAsync(string email)
+        {
+            var courses = await _context.StudentCourses
+                .Include(sc => sc.Course)
+                .Include(sc => sc.Student)
+                .Where(sc => sc.Student.Email == email)
+                .Select(sc => new CourseDto {
+                    CourseId = sc.Course.CourseId,
+                    CourseName = sc.Course.CourseName,
+                    TeacherId = sc.Course.TeacherId
+                }).ToListAsync();
+
+            return courses;
         }
     }
 }
