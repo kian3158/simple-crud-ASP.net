@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolApi.Dtos;
 using SchoolApi.Services;
@@ -6,6 +7,8 @@ namespace SchoolApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]  // <- protect all endpoints
+
     public class StudentsController : ControllerBase
     {
         private readonly IStudentService _svc;
