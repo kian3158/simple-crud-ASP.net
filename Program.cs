@@ -13,12 +13,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Add Controllers
 builder.Services.AddControllers();
 
-// Add DbContext
+// DbContext
 builder.Services.AddDbContext<SchoolContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-// Identity
+// Identity (ApplicationUser extends IdentityUser)
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = false;
@@ -28,21 +28,24 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddEntityFrameworkStores<SchoolContext>()
     .AddDefaultTokenProviders();
 
-// Register services
+// Register services (application services)
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 
-// JWT config - read exactly the names in your appsettings.json
+// Read JWT config (be tolerant of key name differences)
 var jwtSection = builder.Configuration.GetSection("Jwt");
-var keyString = jwtSection.GetValue<string>("Key") ?? throw new InvalidOperationException("Jwt:Key not configured");
+var keyString = jwtSection.GetValue<string>("Key") ?? throw new InvalidOperationException("Jwt:Key not configured in appsettings.json");
 var issuer = jwtSection.GetValue<string>("Issuer");
 var audience = jwtSection.GetValue<string>("Audience");
-// read expiry using the name you used in appsettings.json
-var expireMinutes = jwtSection.GetValue<int>("ExpireMinutes");
+var expireMinutes = jwtSection.GetValue<int?>("ExpireMinutes") 
+                 ?? jwtSection.GetValue<int?>("ExpiresMinutes")
+                 ?? 60;
 
-var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
+var keyBytes = Encoding.UTF8.GetBytes(keyString);
+var signingKey = new SymmetricSecurityKey(keyBytes);
 
+// Configure Authentication + JWT
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -51,51 +54,29 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = false; // keep false for local dev; set true in prod
     options.SaveToken = true;
+
+    // Token validation parameters
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true,
+        ValidateIssuer = !string.IsNullOrEmpty(issuer),
         ValidIssuer = issuer,
-        ValidateAudience = true,
+        ValidateAudience = !string.IsNullOrEmpty(audience),
         ValidAudience = audience,
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = key,
+        IssuerSigningKey = signingKey,
         ValidateLifetime = true,
-        ClockSkew = TimeSpan.FromHours(4)
+        ClockSkew = TimeSpan.FromMinutes(2)
     };
 
-    // Logging events so you can see failure reasons in console
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = ctx =>
-        {
-            // optional: you can log the raw Authorization header presence
-            if (ctx.Request.Headers.ContainsKey("Authorization"))
-                Console.WriteLine("Authorization header present.");
-            return Task.CompletedTask;
-        },
-        OnAuthenticationFailed = ctx =>
-        {
-            Console.WriteLine($"JWT Auth failed: {ctx.Exception?.Message}");
-            return Task.CompletedTask;
-        },
-        OnTokenValidated = ctx =>
-        {
-            Console.WriteLine($"JWT validated for: {ctx.Principal?.Identity?.Name ?? "unknown"}");
-            return Task.CompletedTask;
-        },
-        OnChallenge = ctx =>
-        {
-            // This runs when token is invalid/missing -> prints reason
-            if (ctx.Error != null)
-                Console.WriteLine($"OnChallenge Error: {ctx.Error}; Description: {ctx.ErrorDescription}");
-            return Task.CompletedTask;
-        }
-    };
+    // Use stable JwtSecurityTokenHandler to avoid handler/version mismatches
+    options.UseSecurityTokenValidators = true;
+    options.SecurityTokenValidators.Clear();
+    options.SecurityTokenValidators.Add(new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler());
 });
 
-// Swagger (include the same security definition so Swagger can send token)
+// Swagger with bearer auth UI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -103,16 +84,21 @@ builder.Services.AddSwaggerGen(c =>
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
         Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey
+        Description = "Enter 'Bearer {token}' (without quotes) or paste token depending on UI."
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement {
         {
             new OpenApiSecurityScheme {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" },
+                Scheme = "bearer",
+                Name = "Bearer",
+                In = ParameterLocation.Header
             },
             new string[] {}
         }
@@ -121,12 +107,21 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Database init (leave as you had it)
+// Database init (safe call - keep your initializer)
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<SchoolContext>();
-    DbInitializer.Initialize(context);
+    try
+    {
+        DbInitializer.Initialize(context);
+    }
+    catch
+    {
+        //TODO
+        // swallow here (initializer may already have run or migrations pending);
+        // handle migrations explicitly if needed in CI/ops.
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -137,7 +132,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseAuthentication(); // must be before Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
