@@ -45,6 +45,17 @@ dotnet run
 
 7. Access the API documentation via Swagger at `https://localhost:5266/swagger`.
 
+## Authentication
+
+This API uses **JWT (JSON Web Token)** authentication to secure all endpoints.
+
+### Endpoints
+- `POST /api/auth/register` – Register a new user  
+- `POST /api/auth/login` – Authenticate a user and receive a JWT token  
+
+### Usage
+After logging in, copy the returned token and include it in your request headers:
+
 ## API Endpoints
 ### Students
 - `GET /api/students` – Get all students

@@ -13,31 +13,36 @@ namespace SchoolApi.Services
         public async Task<IEnumerable<StudentDto>> GetAllAsync()
         {
             return await _context.Students
-                .Select(s => new StudentDto {
+                .Select(s => new StudentDto
+                {
                     Id = s.Id,
                     Name = s.Name,
                     Email = s.Email,
                     PhoneNumber = s.PhoneNumber,
                     DateOfBirth = s.DateOfBirth
-                }).ToListAsync();
+                })
+                .ToListAsync();
         }
 
         public async Task<StudentDto?> GetByIdAsync(int id)
         {
             return await _context.Students
                 .Where(s => s.Id == id)
-                .Select(s => new StudentDto {
+                .Select(s => new StudentDto
+                {
                     Id = s.Id,
                     Name = s.Name,
                     Email = s.Email,
                     PhoneNumber = s.PhoneNumber,
                     DateOfBirth = s.DateOfBirth
-                }).FirstOrDefaultAsync();
+                })
+                .FirstOrDefaultAsync();
         }
 
-        public async Task<int> CreateAsync(StudentDto dto)
+        public async Task<int> CreateAsync(StudentCreateUpdateDto dto)
         {
-            var s = new Student {
+            var s = new Student
+            {
                 Name = dto.Name,
                 Email = dto.Email,
                 PhoneNumber = dto.PhoneNumber,
@@ -48,7 +53,7 @@ namespace SchoolApi.Services
             return s.Id;
         }
 
-        public async Task UpdateAsync(int id, StudentDto dto)
+        public async Task UpdateAsync(int id, StudentCreateUpdateDto dto)
         {
             var s = await _context.Students.FindAsync(id);
             if (s == null) throw new KeyNotFoundException("Student not found");
@@ -69,17 +74,17 @@ namespace SchoolApi.Services
 
         public async Task<IEnumerable<CourseDto>> GetCoursesByStudentEmailAsync(string email)
         {
-            var courses = await _context.StudentCourses
+            return await _context.StudentCourses
                 .Include(sc => sc.Course)
                 .Include(sc => sc.Student)
                 .Where(sc => sc.Student.Email == email)
-                .Select(sc => new CourseDto {
+                .Select(sc => new CourseDto
+                {
                     CourseId = sc.Course.CourseId,
                     CourseName = sc.Course.CourseName,
                     TeacherId = sc.Course.TeacherId
-                }).ToListAsync();
-
-            return courses;
+                })
+                .ToListAsync();
         }
     }
 }

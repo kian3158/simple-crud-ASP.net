@@ -6,8 +6,8 @@ namespace SchoolApi.Services
     {
         Task<IEnumerable<TeacherDto>> GetAllAsync();
         Task<TeacherDto?> GetByIdAsync(int id);
-        Task<int> CreateAsync(TeacherDto dto);
-        Task UpdateAsync(int id, TeacherDto dto);
+        Task<int> CreateAsync(TeacherCreateUpdateDto dto);
+        Task UpdateAsync(int id, TeacherCreateUpdateDto dto);
         Task DeleteAsync(int id);
         Task<IEnumerable<CourseDto>> GetCoursesByTeacherEmailAsync(string email);
     }

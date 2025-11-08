@@ -7,67 +7,42 @@ namespace SchoolApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]  // <- protect all endpoints
-
+    [Authorize] 
     public class CoursesController : ControllerBase
     {
-        private readonly ICourseService _svc;
-        public CoursesController(ICourseService svc) => _svc = svc;
+        private readonly ICourseService _courseService;
+        public CoursesController(ICourseService courseService) => _courseService = courseService;
 
-        // GET: api/Courses
         [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            var list = await _svc.GetAllAsync();
-            return Ok(list);
-        }
+        public async Task<IActionResult> GetAll() => Ok(await _courseService.GetAllAsync());
 
-        // GET: api/Courses/{id}
         [HttpGet("{id}")]
-        public async Task<IActionResult> Get(int id)
+        public async Task<IActionResult> GetById(int id)
         {
-            var c = await _svc.GetByIdAsync(id);
-            if (c == null) return NotFound();
-            return Ok(c);
+            var course = await _courseService.GetByIdAsync(id);
+            if (course == null) return NotFound();
+            return Ok(course);
         }
 
-        // POST: api/Courses
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CourseDto dto)
+        public async Task<IActionResult> Create([FromBody] CourseCreateUpdateDto dto)
         {
-            var id = await _svc.CreateAsync(dto);
-            dto.CourseId = id;
-            return CreatedAtAction(nameof(Get), new { id }, dto);
+            var id = await _courseService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id }, dto);
         }
 
-        // PUT: api/Courses/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] CourseDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] CourseCreateUpdateDto dto)
         {
-            try
-            {
-                await _svc.UpdateAsync(id, dto);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            await _courseService.UpdateAsync(id, dto);
+            return NoContent();
         }
 
-        // DELETE: api/Courses/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            try
-            {
-                await _svc.DeleteAsync(id);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            await _courseService.DeleteAsync(id);
+            return NoContent();
         }
     }
 }

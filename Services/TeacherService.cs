@@ -12,29 +12,34 @@ namespace SchoolApi.Services
         public async Task<IEnumerable<TeacherDto>> GetAllAsync()
         {
             return await _context.Teachers
-                .Select(t => new TeacherDto {
+                .Select(t => new TeacherDto
+                {
                     Id = t.Id,
                     Name = t.Name,
                     Email = t.Email,
                     PhoneNumber = t.PhoneNumber
-                }).ToListAsync();
+                })
+                .ToListAsync();
         }
 
         public async Task<TeacherDto?> GetByIdAsync(int id)
         {
             return await _context.Teachers
                 .Where(t => t.Id == id)
-                .Select(t => new TeacherDto {
+                .Select(t => new TeacherDto
+                {
                     Id = t.Id,
                     Name = t.Name,
                     Email = t.Email,
                     PhoneNumber = t.PhoneNumber
-                }).FirstOrDefaultAsync();
+                })
+                .FirstOrDefaultAsync();
         }
 
-        public async Task<int> CreateAsync(TeacherDto dto)
+        public async Task<int> CreateAsync(TeacherCreateUpdateDto dto)
         {
-            var t = new Models.Teacher {
+            var t = new Models.Teacher
+            {
                 Name = dto.Name,
                 Email = dto.Email,
                 PhoneNumber = dto.PhoneNumber
@@ -44,7 +49,7 @@ namespace SchoolApi.Services
             return t.Id;
         }
 
-        public async Task UpdateAsync(int id, TeacherDto dto)
+        public async Task UpdateAsync(int id, TeacherCreateUpdateDto dto)
         {
             var t = await _context.Teachers.FindAsync(id);
             if (t == null) throw new KeyNotFoundException("Teacher not found");
@@ -64,16 +69,16 @@ namespace SchoolApi.Services
 
         public async Task<IEnumerable<CourseDto>> GetCoursesByTeacherEmailAsync(string email)
         {
-            var courses = await _context.Courses
+            return await _context.Courses
                 .Include(c => c.Teacher)
                 .Where(c => c.Teacher != null && c.Teacher.Email == email)
-                .Select(c => new CourseDto {
+                .Select(c => new CourseDto
+                {
                     CourseId = c.CourseId,
                     CourseName = c.CourseName,
                     TeacherId = c.TeacherId
-                }).ToListAsync();
-
-            return courses;
+                })
+                .ToListAsync();
         }
     }
 }
