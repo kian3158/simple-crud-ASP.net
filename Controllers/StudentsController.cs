@@ -126,39 +126,5 @@ namespace SchoolApi.Controllers
             if (student == null) return NotFound();
             return Ok(student);
         }
-
-        // Admin/Teacher: get students by course
-        [HttpGet("by-course/{courseId}")]
-        [Authorize(Roles = "Admin,Teacher")]
-        public async Task<IActionResult> GetByCourse(int courseId)
-        {
-            var course = await _context.Courses
-                .Include(c => c.StudentCourses!)
-                    .ThenInclude(sc => sc.Student!)
-                .FirstOrDefaultAsync(c => c.CourseId == courseId);
-
-            if (course == null) return NotFound();
-
-            if (User.IsInRole("Teacher"))
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.ApplicationUserId == userId);
-                if (teacher == null || course.TeacherId != teacher.Id)
-                    return Forbid();
-            }
-
-            var students = course.StudentCourses
-                .Select(sc => new
-                {
-                    sc.Student!.Id,
-                    sc.Student.Name,
-                    sc.Student.Email,
-                    sc.Student.DateOfBirth,
-                    sc.Student.PhoneNumber
-                })
-                .ToList();
-
-            return Ok(students);
-        }
     }
 }
