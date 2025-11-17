@@ -1,42 +1,35 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolApi.Dtos;
 using SchoolApi.Services;
+using System.Threading.Tasks;
 
 namespace SchoolApi.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthService _auth;
+        private readonly IAuthService _authService;
 
-        public AuthController(IAuthService auth) => _auth = auth;
-
-        // POST: api/Auth/register
-        [HttpPost("register")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+        public AuthController(IAuthService authService)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            var (succeeded, error) = await _auth.RegisterAsync(dto);
-            if (!succeeded) return BadRequest(new { error });
-
-            return Ok(new { message = "User registered" });
+            _authService = authService;
         }
 
-        // POST: api/Auth/login
-        [HttpPost("login")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var result = await _authService.RegisterAsync(dto);
+            if (!result.Succeeded) return BadRequest(result.Error);
+            return Ok("User registered successfully");
+        }
 
-            var (succeeded, token, error) = await _auth.LoginAsync(dto);
-            if (!succeeded) return Unauthorized(new { error });
-
-            return Ok(new { token });
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(LoginDto dto)
+        {
+            var result = await _authService.LoginAsync(dto);
+            if (!result.Succeeded) return Unauthorized(result.Error);
+            return Ok(new { token = result.Token });
         }
     }
 }

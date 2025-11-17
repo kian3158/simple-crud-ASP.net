@@ -1,133 +1,80 @@
-# SchoolAPI CRUD Application
+# School Management API
 
-A simple CRUD backend application for managing students, courses, and teachers.
+A CRUD application to manage Students, Courses, and Teachers with secure authentication and role-based access control. Built with ASP.NET Core and SQL Server.
 
 ## Overview
-This application allows users to:
-- Add, view, edit, and delete Students, Courses, and Teachers.
-- Handle many-to-many relationships between Students and Courses.
-- Handle one-to-many relationships between Teachers and Courses.
 
-## Technologies Used
-- **Backend:** C#, ASP.NET Core 8 Web API
-- **Database:** SQL Server
-- **ORM:** Entity Framework Core
+This application allows users to add, view, edit, and delete Students, Courses, and Teachers. Users are assigned roles that determine what actions they can perform.
 
-## Setup Instructions
-1. Clone the repository:
-```bash
-git clone https://github.com/kian3158/simple-crud-ASP.net.git
-```
+## Roles and Permissions
 
-2. Restore NuGet packages:
-```bash
-dotnet restore
-```
-
-3. Configure the database connection string in `appsettings.json`:
-```json
-"ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=SchoolDb;Trusted_Connection=True;"
-}
-```
-
-4. Apply migrations and create the database:
-```bash
-dotnet ef database update
-```
-
-5. (Optional) Seed the database using SQL script located at `Data/SeedData.sql`.
-
-6. Run the application:
-```bash
-dotnet run
-```
-
-7. Access the API documentation via Swagger at `https://localhost:5266/swagger`.
-
-## Authentication
-
-This API uses **JWT (JSON Web Token)** authentication to secure all endpoints.
-
-### Endpoints
-- `POST /api/auth/register` – Register a new user  
-- `POST /api/auth/login` – Authenticate a user and receive a JWT token  
-
-### Usage
-After logging in, copy the returned token and include it in your request headers:
-
-## API Endpoints
-### Students
-- `GET /api/students` – Get all students
-- `GET /api/students/{id}` – Get student by ID
-- `POST /api/students` – Add a new student
-- `PUT /api/students/{id}` – Update student details
-- `DELETE /api/students/{id}` – Delete a student
-
-### Courses
-- `GET /api/courses` – Get all courses
-- `GET /api/courses/{id}` – Get course by ID
-- `POST /api/courses` – Add a new course
-- `PUT /api/courses/{id}` – Update course details
-- `DELETE /api/courses/{id}` – Delete a course
-
-### Teachers
-- `GET /api/teachers` – Get all teachers
-- `GET /api/teachers/{id}` – Get teacher by ID
-- `POST /api/teachers` – Add a new teacher
-- `PUT /api/teachers/{id}` – Update teacher details
-- `DELETE /api/teachers/{id}` – Delete a teacher
-
-## Example JSON Payloads
-### Student
-```json
-{
-  "name": "Student A",
-  "email": "studenta@example.com",
-  "dateOfBirth": "2000-01-01T00:00:00",
-  "phoneNumber": "1234567890"
-}
-```
-
-### Course
-```json
-{
-  "courseName": "Course A",
-  "teacherId": 1
-}
-```
+### Admin
+- Full control over all resources:
+  - Students: create, edit, delete, list all, view individual details
+  - Teachers: create, edit, delete, list all, view individual details
+  - Courses: create, edit, delete, list all, view enrolled students
+- Can assign or change roles of other users
 
 ### Teacher
-```json
-{
-  "name": "Teacher A",
-  "email": "teachera@example.com",
-  "phoneNumber": "0987654321"
-}
-```
+- Can only view and manage courses assigned to them
+- Can view students enrolled in their courses
+- Can view own profile using `/teachers/me`
+- Cannot modify other teachers, students, or courses not assigned to them
 
-## Database Schema
-- **Students**: `Id`, `Name`, `DateOfBirth`, `Email`, `PhoneNumber`
-- **Teachers**: `Id`, `Name`, `Email`, `PhoneNumber`
-- **Courses**: `CourseId`, `CourseName`, `TeacherId`
-- **StudentCourse**: Junction table for Students and Courses
+### Student
+- Can view own profile using `/students/me`
+- Can view the courses they are enrolled in
+- Cannot modify any other data
 
-### Database Initialization with DbInitializer
+## Role Assignment and Validation
 
-The application includes a `DbInitializer` class that seeds initial data when the application starts. This ensures the database contains sample students, teachers, and courses for testing purposes.  
+- When a user is created (via Admin), they are assigned a role: Admin, Teacher, or Student.
+- Roles are stored in the Identity system (`AspNetRoles`, `AspNetUserRoles`).
+- Role validation is enforced on every request through JWT claims.
+- Endpoints use `[Authorize(Roles = "...")]` to restrict access:
+  - Admin endpoints: only Admins
+  - Teacher endpoints: only the assigned Teacher
+  - Student endpoints: only the authenticated Student
 
-To use it:
+## API Endpoints
 
-1. The `DbInitializer.Initialize(context)` method is called in `Program.cs` during app startup.
-2. It will create and populate:
-   - 10 students
-   - 10 teachers
-   - 5 courses
-   - StudentCourse relationships for many-to-many linking
-3. You can adjust the sample data inside `DbInitializer.cs` if needed.
+### Students
+- `GET /api/students` (Admin) - list all students
+- `POST /api/students` (Admin) - create student
+- `PUT /api/students/{id}` (Admin) - edit student
+- `DELETE /api/students/{id}` (Admin) - delete student
+- `GET /api/students/me` (Student) - view own profile
 
-## Seed Data
-Seed data is located at `Data/SeedData.sql` and contains:
+### Teachers
+- `GET /api/teachers` (Admin) - list all teachers
+- `POST /api/teachers` (Admin) - create teacher
+- `PUT /api/teachers/{id}` (Admin) - edit teacher
+- `DELETE /api/teachers/{id}` (Admin) - delete teacher
+- `POST /api/teachers/{id}/role` (Admin) - change role
+- `GET /api/teachers/me` (Teacher) - view own profile
+
+### Courses
+- `GET /api/courses` (Admin) - list all courses
+- `GET /api/courses/my` (Teacher) - view own courses
+- `POST /api/courses` (Admin) - create course
+- `PUT /api/courses/{id}` (Admin, Teacher) - edit course (Teacher can only edit own courses)
+- `DELETE /api/courses/{id}` (Admin) - delete course
+- `GET /api/courses/{id}/students` (Admin, Teacher, Student) - list students in a course (Student can only view courses they are enrolled in)
+
+## Technologies
+- ASP.NET Core
+- Entity Framework Core
+- SQL Server
+- JWT Authentication
+- ASP.NET Identity
+
+## Database Initialization
+The `DbInit` scripts insert sample data:
 - 10 Students
 - 10 Teachers
 - 5 Courses
+- Assigns roles to users (Admin, Teacher, Student)
+
+## Security
+- All endpoints are protected via JWT authentication
+- Role-based access is strictly enforced to prevent unauthorized access

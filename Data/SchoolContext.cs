@@ -7,11 +7,8 @@ namespace SchoolApi.Data
     public class SchoolContext : IdentityDbContext<ApplicationUser>
     {
         public SchoolContext(DbContextOptions<SchoolContext> options)
-            : base(options)
-        {
-        }
+            : base(options) { }
 
-        // DbSets
         public DbSet<Student> Students { get; set; } = null!;
         public DbSet<Teacher> Teachers { get; set; } = null!;
         public DbSet<Course> Courses { get; set; } = null!;
@@ -19,7 +16,7 @@ namespace SchoolApi.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder); // <- important: Identity needs this
+            base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<StudentCourse>()
                 .HasKey(sc => new { sc.StudentId, sc.CourseId });

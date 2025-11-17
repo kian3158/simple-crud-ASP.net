@@ -5406,11 +5406,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\am.shahrami\\Desktop\\dev\\test\\crudapi\\crudapi.csproj",
+      "projectUniqueName": "C:\\Users\\am.shahrami\\Desktop\\dev\\test\\roles\\simple-crud-ASP.net\\crudapi.csproj",
       "projectName": "crudapi",
-      "projectPath": "C:\\Users\\am.shahrami\\Desktop\\dev\\test\\crudapi\\crudapi.csproj",
+      "projectPath": "C:\\Users\\am.shahrami\\Desktop\\dev\\test\\roles\\simple-crud-ASP.net\\crudapi.csproj",
       "packagesPath": "C:\\Users\\am.shahrami\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\am.shahrami\\Desktop\\dev\\test\\crudapi\\obj\\",
+      "outputPath": "C:\\Users\\am.shahrami\\Desktop\\dev\\test\\roles\\simple-crud-ASP.net\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\am.shahrami\\AppData\\Roaming\\NuGet\\NuGet.Config"

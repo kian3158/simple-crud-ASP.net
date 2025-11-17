@@ -21,97 +21,68 @@ builder.Services.AddDbContext<SchoolContext>(options =>
 // Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    options.Password.RequireDigit = false;
     options.Password.RequiredLength = 6;
+    options.Password.RequireDigit = false;
     options.User.RequireUniqueEmail = true;
 })
     .AddEntityFrameworkStores<SchoolContext>()
     .AddDefaultTokenProviders();
 
-// Register services
+// Services
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<ICourseService, CourseService>();
-builder.Services.AddScoped<IStudentService, StudentService>();
-builder.Services.AddScoped<ITeacherService, TeacherService>();
 
 // JWT
 var jwtSection = builder.Configuration.GetSection("Jwt");
-var keyString = jwtSection.GetValue<string>("Key") ?? throw new InvalidOperationException("Jwt:Key not configured");
-var issuer = jwtSection.GetValue<string>("Issuer");
-var audience = jwtSection.GetValue<string>("Audience");
-var keyBytes = Encoding.UTF8.GetBytes(keyString);
-var signingKey = new SymmetricSecurityKey(keyBytes);
+var key = Encoding.UTF8.GetBytes(jwtSection["Key"]!);
 
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // local dev only
-    options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = !string.IsNullOrEmpty(issuer),
-        ValidIssuer = issuer,
-        ValidateAudience = !string.IsNullOrEmpty(audience),
-        ValidAudience = audience,
+        ValidateIssuer = true,
+        ValidIssuer = jwtSection["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSection["Audience"],
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = signingKey,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateLifetime = true,
         ClockSkew = TimeSpan.FromMinutes(2)
     };
 });
 
-// Swagger with JWT auth
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
-// Swagger with JWT auth
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "School API", Version = "v1" });
-
-    // JWT token support (raw token, no "Bearer " prefix)
-    c.AddSecurityDefinition("Token", new OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
         In = ParameterLocation.Header,
-        Description = "Enter JWT token only (no 'Bearer ' prefix)."
+        Description = "Enter JWT with Bearer",
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey
     });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Token" },
-                In = ParameterLocation.Header
-            },
-            Array.Empty<string>()
-        }
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement{
+        { new OpenApiSecurityScheme{Reference=new OpenApiReference{Type=ReferenceType.SecurityScheme,Id="Bearer"}}, Array.Empty<string>() }
     });
 });
 
 var app = builder.Build();
 
-// Database init
+// Initialize DB & Roles
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<SchoolContext>();
-    try
-    {
-        DbInitializer.Initialize(context);
-    }
-    catch
-    {
-        // ignored
-    }
+    DbInitializer.Initialize(context, services);
 }
 
-// Swagger + auto-open
+// Swagger & auto-open
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -120,26 +91,21 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "School API v1");
     });
 
-    // Open browser automatically
     var url = "http://localhost:5265/swagger";
-    await Task.Run(() =>
+    try
     {
-        try
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-        }
-        catch { }
-    });
+            FileName = url,
+            UseShellExecute = true
+        });
+    }
+    catch { }
 }
 
-app.UseHttpsRedirection(); // optional
+app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
 app.Run();

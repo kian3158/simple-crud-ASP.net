@@ -18,8 +18,7 @@ namespace SchoolApi.Services
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
 
-        public AuthService(
-            UserManager<ApplicationUser> userManager,
+        public AuthService(UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IConfiguration configuration)
         {
@@ -31,22 +30,20 @@ namespace SchoolApi.Services
         public async Task<(bool Succeeded, string? Error)> RegisterAsync(RegisterDto dto)
         {
             var existing = await _userManager.FindByEmailAsync(dto.Email);
-            if (existing != null)
-                return (false, "Email already in use");
+            if (existing != null) return (false, "Email already in use");
 
             var user = new ApplicationUser
             {
-                UserName = dto.Email,
                 Email = dto.Email,
+                UserName = dto.Email,
                 PhoneNumber = dto.PhoneNumber
             };
-
             var result = await _userManager.CreateAsync(user, dto.Password);
-            if (!result.Succeeded)
-            {
-                var err = string.Join("; ", result.Errors.Select(e => e.Description));
-                return (false, err);
-            }
+            if (!result.Succeeded) return (false, string.Join("; ", result.Errors.Select(e => e.Description)));
+
+            string role = string.IsNullOrEmpty(dto.Role) ? "Student" : dto.Role;
+            if (!await _userManager.IsInRoleAsync(user, role))
+                await _userManager.AddToRoleAsync(user, role);
 
             return (true, null);
         }
@@ -66,32 +63,32 @@ namespace SchoolApi.Services
         private async Task<string> GenerateJwtToken(ApplicationUser user)
         {
             var jwtSection = _configuration.GetSection("Jwt");
-            var keyString = jwtSection.GetValue<string>("Key") ?? throw new InvalidOperationException("Jwt:Key not configured");
-            var issuer = jwtSection.GetValue<string>("Issuer");
-            var audience = jwtSection.GetValue<string>("Audience");
-            var expiresMinutes = jwtSection.GetValue<int?>("ExpireMinutes")
-                                ?? jwtSection.GetValue<int?>("ExpiresMinutes")
-                                ?? 60;
+
+            var keyString = jwtSection["Key"];
+            if (string.IsNullOrEmpty(keyString))
+                throw new Exception("JWT Key is missing in configuration");
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName ?? ""),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Email, user.Email!)
             }.ToList();
 
             var roles = await _userManager.GetRolesAsync(user);
-            foreach (var r in roles)
-                claims.Add(new Claim(ClaimTypes.Role, r));
+            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+
+            int expireMinutes = 60; // default
+            if (!string.IsNullOrEmpty(jwtSection["ExpireMinutes"]))
+                int.TryParse(jwtSection["ExpireMinutes"], out expireMinutes);
 
             var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
+                issuer: jwtSection["Issuer"],
+                audience: jwtSection["Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(expiresMinutes),
+                expires: DateTime.UtcNow.AddMinutes(expireMinutes),
                 signingCredentials: creds
             );
 
