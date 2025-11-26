@@ -1,0 +1,9 @@
+/app/src/WebAPI/obj/Debug/net10.0/WebAPI.csproj.AssemblyReference.cache
+/app/src/WebAPI/obj/Debug/net10.0/rpswa.dswa.cache.json
+/app/src/WebAPI/obj/Debug/net10.0/WebAPI.GeneratedMSBuildEditorConfig.editorconfig
+/app/src/WebAPI/obj/Debug/net10.0/WebAPI.AssemblyInfoInputs.cache
+/app/src/WebAPI/obj/Debug/net10.0/WebAPI.AssemblyInfo.cs
+/app/src/WebAPI/obj/Debug/net10.0/WebAPI.csproj.CoreCompileInputs.cache
+/app/src/WebAPI/obj/Debug/net10.0/WebAPI.MvcApplicationPartsAssemblyInfo.cs
+/app/src/WebAPI/obj/Debug/net10.0/WebAPI.MvcApplicationPartsAssemblyInfo.cache
+/app/src/WebAPI/obj/Debug/net10.0/WebAPI.sourcelink.json
