@@ -1,4 +1,4 @@
-namespace SchoolApi.Models
+namespace Domain
 {
 public class StudentCourse
 {

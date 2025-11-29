@@ -1,8 +1,9 @@
 using System;
 using System.Linq;
-using SchoolApi.Models; 
+using Domain;
+using Infrastructure;
 
-namespace SchoolApi.Data
+namespace WebAPI
 {
     public static class DbInitializer
     {

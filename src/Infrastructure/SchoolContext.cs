@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using SchoolApi.Models;
+using Domain;
 
-namespace SchoolApi.Data
+namespace Infrastructure
 {
     public class SchoolContext : DbContext
     {
