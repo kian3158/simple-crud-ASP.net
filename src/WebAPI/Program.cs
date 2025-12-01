@@ -91,13 +91,12 @@ using (var scope = app.Services.CreateScope())
             return; // exit Main so we don't start the web host
         }
 
-        // Normal startup: migrate + seed (this is what you had before)
         DbInitializer.Initialize(context, services, logger);
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "Database migration or initialization failed. Exiting.");
-        throw; // fail fast so you see the error
+        throw;
     }
 }
 

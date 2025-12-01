@@ -64,7 +64,8 @@ namespace SchoolApi.Infrastructure
             // TEACHERS: ensure Identity users exist first, then create Teacher entities with ApplicationUserId set
             if (!context.Teachers.Any())
             {
-                var teacherInfos = Enumerable.Range(1, 10).Select(i => new {
+                var teacherInfos = Enumerable.Range(1, 10).Select(i => new
+                {
                     Name = $"Teacher {i}",
                     Email = $"teacher{i}@example.com",
                     Phone = $"+98-21-{1000 + i:D4}"
@@ -109,7 +110,8 @@ namespace SchoolApi.Infrastructure
             // STUDENTS: same approach as teachers (10)
             if (!context.Students.Any())
             {
-                var studentInfos = Enumerable.Range(1, 10).Select(i => new {
+                var studentInfos = Enumerable.Range(1, 10).Select(i => new
+                {
                     Name = $"Student {i}",
                     Dob = new DateTime(2000, (i % 12) + 1, Math.Min(28, i)),
                     Email = $"student{i}@example.com",
@@ -159,7 +161,8 @@ namespace SchoolApi.Infrastructure
                 {
                     // pick 5 course names and assign to teachers round-robin
                     var courseNames = new[] { "Math", "Physics", "Chemistry", "English", "Farsi" };
-                    var courses = courseNames.Select((name, idx) => new Course {
+                    var courses = courseNames.Select((name, idx) => new Course
+                    {
                         CourseName = name,
                         TeacherId = teachers[idx % teachers.Length].Id
                     }).ToArray();
@@ -174,7 +177,6 @@ namespace SchoolApi.Infrastructure
                 }
             }
 
-            // StudentCourses - create some enrollments (preserve original idea: at least cover multiple students)
             if (!context.StudentCourses.Any())
             {
                 var students = context.Students.ToArray();
