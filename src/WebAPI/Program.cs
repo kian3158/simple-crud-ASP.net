@@ -72,14 +72,35 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-var app = builder.Build();
-
+var app = builder.Build();// Initialize DB & Roles (with optional seed-only mode)
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<SchoolContext>();
-    await DbInitializer.InitializeAsync(context, services);
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var context = services.GetRequiredService<SchoolContext>();
+
+        // If SEED_ONLY environment variable is set (or --seed-only arg), run init and exit
+        var seedOnlyEnv = Environment.GetEnvironmentVariable("SEED_ONLY");
+        var seedOnlyArg = args.Any(a => a.Equals("--seed-only", StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(seedOnlyEnv) || seedOnlyArg)
+        {
+            logger.LogInformation("Seed-only mode detected. Running initializer and exiting.");
+            DbInitializer.Initialize(context, services, logger);
+            return; // exit Main so we don't start the web host
+        }
+
+        // Normal startup: migrate + seed (this is what you had before)
+        DbInitializer.Initialize(context, services, logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Database migration or initialization failed. Exiting.");
+        throw; // fail fast so you see the error
+    }
 }
+
 
 // Swagger & auto-open
 if (app.Environment.IsDevelopment())

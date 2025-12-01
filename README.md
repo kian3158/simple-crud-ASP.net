@@ -68,13 +68,50 @@ This application allows users to add, view, edit, and delete Students, Courses, 
 - JWT Authentication
 - ASP.NET Identity
 
-## Database Initialization
-The `DbInit` scripts insert sample data:
-- 10 Students
-- 10 Teachers
-- 5 Courses
-- Assigns roles to users (Admin, Teacher, Student)
 
-## Security
-- All endpoints are protected via JWT authentication
-- Role-based access is strictly enforced to prevent unauthorized access
+
+
+
+# Database Setup Scripts
+
+This project includes two helper scripts to ensure every developer starts with the **same database schema and the same seed data**, without manual EF Core commands.
+
+
+
+## 1. apply-migrations
+
+**Purpose:**  
+Apply all pending Entity Framework Core migrations to your local SQL Server database.
+
+**Use this when:**
+- You're running the project for the first time  
+- You pulled changes that include DB updates  
+- EF Core complains about missing tables/columns  
+- Basically: **“Make my database not broken.”**
+
+**What it does:**
+- Runs `dotnet ef database update` behind the scenes  
+- Ensures your database schema matches the project’s latest state  
+
+
+## 2. seed-database
+
+**Purpose:**  
+Populate the database with initial demo/test data so the API works out of the box.
+
+**This script creates:**
+- **10 teachers**  
+- **10 students**  
+- **5 starter courses**  
+- Default identity roles (if missing)
+
+
+
+## Workflow Example
+
+```bash
+# 1. Make sure your schema is up to date
+./src/Infrastructure/Scripts/apply-migrations
+
+# 2. Seed the database with initial data
+./src/Infrastructure/Scripts/seed-database

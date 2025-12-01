@@ -1,29 +1,47 @@
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SchoolApi.Domain.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace SchoolApi.Infrastructure
 {
     public static class DbInitializer
     {
-        public static async Task InitializeAsync(SchoolContext context, IServiceProvider serviceProvider)
+        // Main entry used by Program.cs
+        public static void Initialize(SchoolContext context, IServiceProvider serviceProvider, ILogger? logger = null)
         {
+            try
+            {
+                logger?.LogInformation("Starting DB migration/initialization...");
+                // apply migrations so Identity tables exist
+                context.Database.Migrate();
+                logger?.LogInformation("Database migrated/applied successfully.");
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Failed to migrate database.");
+                throw;
+            }
+
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             string[] roles = { "Admin", "Teacher", "Student" };
             foreach (var role in roles)
             {
-                if (!await roleManager.RoleExistsAsync(role))
-                    await roleManager.CreateAsync(new IdentityRole(role));
+                if (!roleManager.RoleExistsAsync(role).Result)
+                {
+                    logger?.LogInformation("Creating role '{Role}'", role);
+                    roleManager.CreateAsync(new IdentityRole(role)).GetAwaiter().GetResult();
+                }
             }
 
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-            // Admin
+            // Admin (single user)
             var adminEmail = "admin@example.com";
-            if (await userManager.FindByEmailAsync(adminEmail) == null)
+            if (userManager.FindByEmailAsync(adminEmail).Result == null)
             {
                 var admin = new ApplicationUser
                 {
@@ -31,103 +49,168 @@ namespace SchoolApi.Infrastructure
                     Email = adminEmail,
                     PhoneNumber = "+1234567890"
                 };
-                await userManager.CreateAsync(admin, "Admin123!");
-                await userManager.AddToRoleAsync(admin, "Admin");
+                var res = userManager.CreateAsync(admin, "Admin123!").GetAwaiter().GetResult();
+                if (res.Succeeded)
+                {
+                    userManager.AddToRoleAsync(admin, "Admin").Wait();
+                    logger?.LogInformation("Seeded admin user: {Email}", adminEmail);
+                }
+                else
+                {
+                    logger?.LogWarning("Failed to create admin user: {Errors}", string.Join(", ", res.Errors.Select(e => e.Description)));
+                }
             }
 
-            // Teachers
+            // TEACHERS: ensure Identity users exist first, then create Teacher entities with ApplicationUserId set
             if (!context.Teachers.Any())
             {
-                var teachers = new Teacher[]
-                {
-                    new Teacher { Name = "Teacher 1", Email = "teacher1@example.com", PhoneNumber = "+98-21-1001" },
-                    new Teacher { Name = "Teacher 2", Email = "teacher2@example.com", PhoneNumber = "+98-21-1002" },
-                    new Teacher { Name = "Teacher 3", Email = "teacher3@example.com", PhoneNumber = "+98-21-1003" },
-                };
-                context.Teachers.AddRange(teachers);
-                await context.SaveChangesAsync();
+                var teacherInfos = Enumerable.Range(1, 10).Select(i => new {
+                    Name = $"Teacher {i}",
+                    Email = $"teacher{i}@example.com",
+                    Phone = $"+98-21-{1000 + i:D4}"
+                }).ToArray();
 
-                foreach (var teacher in teachers)
+                foreach (var info in teacherInfos)
                 {
-                    if (await userManager.FindByEmailAsync(teacher.Email) == null)
+                    // ensure Identity user exists
+                    var user = userManager.FindByEmailAsync(info.Email).Result;
+                    if (user == null)
                     {
-                        var user = new ApplicationUser
+                        user = new ApplicationUser
                         {
-                            UserName = teacher.Email,
-                            Email = teacher.Email,
-                            PhoneNumber = teacher.PhoneNumber
+                            UserName = info.Email,
+                            Email = info.Email,
+                            PhoneNumber = info.Phone
                         };
-                        await userManager.CreateAsync(user, "Teacher123!");
-                        await userManager.AddToRoleAsync(user, "Teacher");
-
-                        teacher.ApplicationUserId = user.Id;
+                        var createResult = userManager.CreateAsync(user, "Teacher123!").GetAwaiter().GetResult();
+                        if (!createResult.Succeeded)
+                        {
+                            logger?.LogWarning("Failed to create Identity user for teacher {Email}: {Errors}", info.Email, string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                            continue; // skip this teacher (so we don't insert a teacher with null user)
+                        }
+                        userManager.AddToRoleAsync(user, "Teacher").Wait();
                     }
+
+                    // create Teacher entity with ApplicationUserId assigned
+                    var teacher = new Teacher
+                    {
+                        Name = info.Name,
+                        Email = info.Email,
+                        PhoneNumber = info.Phone,
+                        ApplicationUserId = user.Id
+                    };
+                    context.Teachers.Add(teacher);
                 }
-                await context.SaveChangesAsync();
+
+                context.SaveChanges();
+                logger?.LogInformation("Seeded teachers and corresponding Identity users (10).");
             }
 
-            // Students
+            // STUDENTS: same approach as teachers (10)
             if (!context.Students.Any())
             {
-                var students = new Student[]
-                {
-                    new Student { Name = "Student 1", DateOfBirth = new DateTime(2000,1,1), Email = "student1@example.com", PhoneNumber = "+98-912-0001" },
-                    new Student { Name = "Student 2", DateOfBirth = new DateTime(2000,2,2), Email = "student2@example.com", PhoneNumber = "+98-912-0002" },
-                    new Student { Name = "Student 3", DateOfBirth = new DateTime(2000,3,3), Email = "student3@example.com", PhoneNumber = "+98-912-0003" },
-                };
-                context.Students.AddRange(students);
-                await context.SaveChangesAsync();
+                var studentInfos = Enumerable.Range(1, 10).Select(i => new {
+                    Name = $"Student {i}",
+                    Dob = new DateTime(2000, (i % 12) + 1, Math.Min(28, i)),
+                    Email = $"student{i}@example.com",
+                    Phone = $"+98-912-{1000 + i:D4}"
+                }).ToArray();
 
-                foreach (var student in students)
+                foreach (var info in studentInfos)
                 {
-                    if (await userManager.FindByEmailAsync(student.Email) == null)
+                    var user = userManager.FindByEmailAsync(info.Email).Result;
+                    if (user == null)
                     {
-                        var user = new ApplicationUser
+                        user = new ApplicationUser
                         {
-                            UserName = student.Email,
-                            Email = student.Email,
-                            PhoneNumber = student.PhoneNumber
+                            UserName = info.Email,
+                            Email = info.Email,
+                            PhoneNumber = info.Phone
                         };
-                        await userManager.CreateAsync(user, "Student123!");
-                        await userManager.AddToRoleAsync(user, "Student");
-
-                        student.ApplicationUserId = user.Id;
+                        var createResult = userManager.CreateAsync(user, "Student123!").GetAwaiter().GetResult();
+                        if (!createResult.Succeeded)
+                        {
+                            logger?.LogWarning("Failed to create Identity user for student {Email}: {Errors}", info.Email, string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                            continue; // skip this student
+                        }
+                        userManager.AddToRoleAsync(user, "Student").Wait();
                     }
+
+                    var student = new Student
+                    {
+                        Name = info.Name,
+                        DateOfBirth = info.Dob,
+                        Email = info.Email,
+                        PhoneNumber = info.Phone,
+                        ApplicationUserId = user.Id
+                    };
+                    context.Students.Add(student);
                 }
-                await context.SaveChangesAsync();
+
+                context.SaveChanges();
+                logger?.LogInformation("Seeded students and corresponding Identity users (10).");
             }
 
-            // Courses
+            // COURSES (5 courses)
             if (!context.Courses.Any())
             {
                 var teachers = context.Teachers.ToArray();
-                var courses = new Course[]
+                if (teachers.Length >= 1)
                 {
-                    new Course { CourseName = "Math", TeacherId = teachers[0].Id },
-                    new Course { CourseName = "Physics", TeacherId = teachers[1].Id },
-                    new Course { CourseName = "Chemistry", TeacherId = teachers[2].Id },
-                    new Course { CourseName = "English", TeacherId = teachers[0].Id },
-                    new Course { CourseName = "Farsi", TeacherId = teachers[1].Id },
-                };
-                context.Courses.AddRange(courses);
-                await context.SaveChangesAsync();
+                    // pick 5 course names and assign to teachers round-robin
+                    var courseNames = new[] { "Math", "Physics", "Chemistry", "English", "Farsi" };
+                    var courses = courseNames.Select((name, idx) => new Course {
+                        CourseName = name,
+                        TeacherId = teachers[idx % teachers.Length].Id
+                    }).ToArray();
+
+                    context.Courses.AddRange(courses);
+                    context.SaveChanges();
+                    logger?.LogInformation("Seeded courses (5).");
+                }
+                else
+                {
+                    logger?.LogWarning("Not enough seeded teachers to create courses. Teachers count: {Count}", teachers.Length);
+                }
             }
 
-            // StudentCourses
+            // StudentCourses - create some enrollments (preserve original idea: at least cover multiple students)
             if (!context.StudentCourses.Any())
             {
                 var students = context.Students.ToArray();
                 var courses = context.Courses.ToArray();
-                var enrollments = new StudentCourse[]
+                if (students.Length > 0 && courses.Length > 0)
                 {
-                    new StudentCourse { StudentId = students[0].Id, CourseId = courses[0].CourseId },
-                    new StudentCourse { StudentId = students[0].Id, CourseId = courses[2].CourseId },
-                    new StudentCourse { StudentId = students[1].Id, CourseId = courses[1].CourseId },
-                    new StudentCourse { StudentId = students[2].Id, CourseId = courses[3].CourseId },
-                };
-                context.StudentCourses.AddRange(enrollments);
-                await context.SaveChangesAsync();
+                    // create a few deterministic enrollments so dataset is sensible
+                    var enrollments = new System.Collections.Generic.List<StudentCourse>();
+                    // give first 5 students 2 courses each, others 1 course
+                    for (int i = 0; i < Math.Min(5, students.Length); i++)
+                    {
+                        enrollments.Add(new StudentCourse { StudentId = students[i].Id, CourseId = courses[i % courses.Length].CourseId });
+                        enrollments.Add(new StudentCourse { StudentId = students[i].Id, CourseId = courses[(i + 1) % courses.Length].CourseId });
+                    }
+                    for (int i = 5; i < students.Length; i++)
+                    {
+                        enrollments.Add(new StudentCourse { StudentId = students[i].Id, CourseId = courses[i % courses.Length].CourseId });
+                    }
+
+                    context.StudentCourses.AddRange(enrollments);
+                    context.SaveChanges();
+                    logger?.LogInformation("Seeded student enrollments.");
+                }
+                else
+                {
+                    logger?.LogWarning("Not enough students/courses to create student enrollments. Students: {S}, Courses: {C}", context.Students.Count(), context.Courses.Count());
+                }
             }
+
+            logger?.LogInformation("Database initialization complete.");
+        }
+
+        // Back-compat shim: keep the 2-arg overload so older code still works
+        public static void Initialize(SchoolContext context, IServiceProvider serviceProvider)
+        {
+            Initialize(context, serviceProvider, null);
         }
     }
 }
